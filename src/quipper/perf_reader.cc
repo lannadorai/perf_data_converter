@@ -1945,6 +1945,19 @@ void PerfReader::MaybeSwapEventFields(event_t* event, bool is_cross_endian) {
         ByteSwap(&event->namespaces.link_info[i].ino);
       }
       break;
+    case PERF_RECORD_AUXTRACE_INFO: {
+      ByteSwap(&event->auxtrace_info.type);
+      u64 priv_size =
+          (event->header.size -
+           (sizeof(event->header) + sizeof(event->auxtrace_info.type) +
+            sizeof(u32)  // size of auxtrace_info_event.reserved__
+            )) /
+          sizeof(u64);
+      for (u64 i = 0; i < priv_size; ++i) {
+        ByteSwap(&event->auxtrace_info.priv[i]);
+      }
+      break;
+    }
     case PERF_RECORD_AUXTRACE:
       ByteSwap(&event->auxtrace.size);
       ByteSwap(&event->auxtrace.offset);
@@ -1952,6 +1965,39 @@ void PerfReader::MaybeSwapEventFields(event_t* event, bool is_cross_endian) {
       ByteSwap(&event->auxtrace.idx);
       ByteSwap(&event->auxtrace.tid);
       ByteSwap(&event->auxtrace.cpu);
+      break;
+    case PERF_RECORD_THREAD_MAP:
+      ByteSwap(&event->thread_map.nr);
+      for (u64 i = 0; i < event->thread_map.nr; ++i) {
+        ByteSwap(&event->thread_map.entries[i].pid);
+      }
+      break;
+    case PERF_RECORD_STAT_CONFIG:
+      ByteSwap(&event->stat_config.nr);
+      for (u64 i = 0; i < event->stat_config.nr; ++i) {
+        ByteSwap(&event->stat_config.data[i].tag);
+        ByteSwap(&event->stat_config.data[i].val);
+      }
+      break;
+    case PERF_RECORD_STAT:
+      ByteSwap(&event->stat.id);
+      ByteSwap(&event->stat.cpu);
+      ByteSwap(&event->stat.thread);
+      ByteSwap(&event->stat.val);
+      ByteSwap(&event->stat.ena);
+      ByteSwap(&event->stat.run);
+      break;
+    case PERF_RECORD_STAT_ROUND:
+      ByteSwap(&event->stat_round.type);
+      ByteSwap(&event->stat_round.time);
+      break;
+    case PERF_RECORD_AUXTRACE_ERROR:
+      ByteSwap(&event->auxtrace_error.type);
+      ByteSwap(&event->auxtrace_error.code);
+      ByteSwap(&event->auxtrace_error.cpu);
+      ByteSwap(&event->auxtrace_error.pid);
+      ByteSwap(&event->auxtrace_error.tid);
+      ByteSwap(&event->auxtrace_error.ip);
       break;
     case PERF_RECORD_TIME_CONV:
       ByteSwap(&event->time_conv.time_shift);

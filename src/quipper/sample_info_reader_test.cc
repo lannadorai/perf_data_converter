@@ -29,7 +29,8 @@ TEST(SampleInfoReaderTest, ReadSampleEvent) {
       PERF_SAMPLE_PERIOD |
       PERF_SAMPLE_WEIGHT |
       PERF_SAMPLE_DATA_SRC |
-      PERF_SAMPLE_TRANSACTION;
+      PERF_SAMPLE_TRANSACTION |
+      PERF_SAMPLE_PHYS_ADDR;
   // clang-format on
   struct perf_event_attr attr = {0};
   attr.sample_type = sample_type;
@@ -48,6 +49,7 @@ TEST(SampleInfoReaderTest, ReadSampleEvent) {
       12345,                                 // WEIGHT
       0x68100142,                            // DATA_SRC
       67890,                                 // TRANSACTIONS
+      0x00003f324c43d23b,                    // PHYSICAL_ADDR
   };
   const sample_event sample_event_struct = {
       .header = {
@@ -79,6 +81,7 @@ TEST(SampleInfoReaderTest, ReadSampleEvent) {
   EXPECT_EQ(12345, sample.weight);
   EXPECT_EQ(0x68100142, sample.data_src);
   EXPECT_EQ(67890, sample.transaction);
+  EXPECT_EQ(0x00003f324c43d23b, sample.physical_addr);
 }
 
 TEST(SampleInfoReaderTest, ReadSampleEventCrossEndian) {
@@ -388,6 +391,52 @@ TEST(SampleInfoReaderTest, ReadReadInfoWithGroups) {
   EXPECT_EQ(2000000, sample.read.group.values[1].value);
   EXPECT_EQ(0xbeef00, sample.read.group.values[2].id);
   EXPECT_EQ(3000000, sample.read.group.values[2].value);
+}
+
+TEST(SampleInfoReaderTest, WriteSampleEventWithZeroBranchStack) {
+  // clang-format off
+  uint64_t sample_type =
+      PERF_SAMPLE_IP |
+      PERF_SAMPLE_TID |
+      PERF_SAMPLE_TIME |
+      PERF_SAMPLE_CPU |
+      PERF_SAMPLE_PERIOD |
+      PERF_SAMPLE_BRANCH_STACK;
+  // clang-format on
+  struct perf_event_attr attr = {0};
+  attr.sample_type = sample_type;
+  SampleInfoReader reader(attr, false /* read_cross_endian */);
+
+  size_t event_size = sizeof(sample_event) + (6 * sizeof(u64));
+
+  malloced_unique_ptr<event_t> event_ptr(CallocMemoryForEvent(event_size));
+  event_t* event = event_ptr.get();
+  event->header.type = PERF_RECORD_SAMPLE;
+  event->header.misc = 0;
+  event->header.size = event_size;
+
+  PunU32U64 pid_tid{.v32 = {0x68d, 0x68e}};
+
+  perf_sample sample;
+  sample.ip = 0xffffffff01234567;
+  sample.pid = pid_tid.v32[0];
+  sample.tid = pid_tid.v32[1];
+  sample.time = 1415837014 * 1000000000ULL;
+  sample.cpu = 8;
+  sample.period = 10001;
+
+  ASSERT_TRUE(reader.WritePerfSampleInfo(sample, event));
+
+  uint64_t offset = SampleInfoReader::GetPerfSampleDataOffset(*event);
+  uint64_t* array =
+      reinterpret_cast<uint64_t*>(event) + offset / sizeof(uint64_t);
+
+  EXPECT_EQ(sample.ip, *array++);
+  EXPECT_EQ(pid_tid.v64, *array++);
+  EXPECT_EQ(sample.time, *array++);
+  EXPECT_EQ(sample.cpu, *array++);
+  EXPECT_EQ(sample.period, *array++);
+  EXPECT_EQ(0, *array++);  // BRANCH_STACK.nr
 }
 
 }  // namespace quipper

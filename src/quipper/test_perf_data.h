@@ -601,6 +601,104 @@ class ExampleNamespacesEvent : public StreamWriteable {
   const SampleInfo sample_id_;
 };
 
+// Produces PERF_RECORD_AUXTRACE_INFO event.
+class ExampleAuxtraceInfoEvent : public StreamWriteable {
+ public:
+  ExampleAuxtraceInfoEvent(u32 type, std::vector<u64> priv)
+      : type_(type), priv_(std::move(priv)) {}
+  size_t GetSize() const;
+  void WriteTo(std::ostream* out) const override;
+
+ private:
+  const u32 type_;
+  const std::vector<u64> priv_;
+};
+
+// Produces PERF_RECORD_AUXTRACE_ERROR event.
+class ExampleAuxtraceErrorEvent : public StreamWriteable {
+ public:
+  ExampleAuxtraceErrorEvent(u32 type, u32 code, u32 cpu, u32 pid, u32 tid,
+                            u32 ip, string msg)
+      : type_(type),
+        code_(code),
+        cpu_(cpu),
+        pid_(pid),
+        tid_(tid),
+        ip_(ip),
+        msg_(std::move(msg)) {}
+  size_t GetSize() const;
+  void WriteTo(std::ostream* out) const override;
+
+ private:
+  const u32 type_;
+  const u32 code_;
+  const u32 cpu_;
+  const u32 pid_;
+  const u32 tid_;
+  const u64 ip_;
+  const string msg_;
+};
+
+// Produces PERF_RECORD_THREAD_MAP event.
+class ExampleThreadMapEvent : public StreamWriteable {
+ public:
+  ExampleThreadMapEvent(std::vector<struct thread_map_event_entry> entries)
+      : entries_(std::move(entries)) {}
+  size_t GetSize() const;
+  void WriteTo(std::ostream* out) const override;
+
+ private:
+  const std::vector<struct thread_map_event_entry> entries_;
+};
+
+// Produces PERF_RECORD_STAT_CONFIG event.
+class ExampleStatConfigEvent : public StreamWriteable {
+ public:
+  ExampleStatConfigEvent(std::vector<struct stat_config_event_entry> data)
+      : data_(std::move(data)) {}
+  size_t GetSize() const;
+  void WriteTo(std::ostream* out) const override;
+
+ private:
+  const std::vector<struct stat_config_event_entry> data_;
+};
+
+// Produces PERF_RECORD_STAT event.
+class ExampleStatEvent : public StreamWriteable {
+ public:
+  ExampleStatEvent(u64 id, u32 cpu, u32 thread, u64 value, u64 enabled,
+                   u64 running)
+      : id_(id),
+        cpu_(cpu),
+        thread_(thread),
+        value_(value),
+        enabled_(enabled),
+        running_(running) {}
+  size_t GetSize() const;
+  void WriteTo(std::ostream* out) const override;
+
+ private:
+  const u64 id_;
+  const u32 cpu_;
+  const u32 thread_;
+  const u64 value_;
+  const u64 enabled_;
+  const u64 running_;
+};
+
+// Produces PERF_RECORD_STAT_ROUND event.
+class ExampleStatRoundEvent : public StreamWriteable {
+ public:
+  ExampleStatRoundEvent(u64 type, u64 time) : type_(type), time_(time) {}
+
+  size_t GetSize() const;
+  void WriteTo(std::ostream* out) const override;
+
+ private:
+  const u64 type_;
+  const u64 time_;
+};
+
 // Produces PERF_RECORD_TIME_CONV event.
 class ExampleTimeConvEvent : public StreamWriteable {
  public:
